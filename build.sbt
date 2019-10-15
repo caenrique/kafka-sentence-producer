@@ -1,4 +1,4 @@
-name := "untitled"
+name := "sentence-generator"
 
 version := "0.1"
 
