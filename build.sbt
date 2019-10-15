@@ -1,4 +1,4 @@
-name := "sentence-generator"
+name := "kafka-sentence-producer"
 
 version := "0.1"
 
