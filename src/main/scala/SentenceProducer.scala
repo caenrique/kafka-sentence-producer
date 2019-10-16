@@ -6,7 +6,7 @@ import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 import scala.annotation.tailrec
 import scala.io.{Codec, Source}
 
-object TweetGenerator extends App {
+object SentenceProducer extends App {
 
   def timed(f: => Any): Long = {
     val start = System.currentTimeMillis()
