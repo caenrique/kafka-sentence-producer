@@ -1,14 +1,13 @@
 import java.util.Properties
 
+import javax.sound.sampled.AudioFormat.Encoding
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
 
 import scala.annotation.tailrec
-import scala.io.Source
-import scala.util.Random
+import scala.io.{Codec, Source}
 
 object TweetGenerator extends App {
 
-  def repeat[A](n: Int)(f: => A): List[A] = (1 to n).map(_ => f).toList
   def timed(f: => Any): Long = {
     val start = System.currentTimeMillis()
     f
@@ -16,19 +15,19 @@ object TweetGenerator extends App {
   }
 
   @tailrec
-  def sendMessages(words: Vector[String], producer: KafkaProducer[String, String])
+  def sendMessages(sentences: List[String], producer: KafkaProducer[String, String])
                   (n: Int, sleep: Int, dryRun: Boolean = false): Unit = {
-    if (n == 0) {
+    if (n == 0 || sentences.isEmpty) {
       producer.close()
     } else {
-      val sentence = Random.shuffle(repeat(Random.nextInt(21) + 1)(Random.nextInt(words.length)).map(words))
-      val record = new ProducerRecord[String, String](topic, "key", sentence.mkString(" "))
+      val sentence :: rest = sentences
+      val record = new ProducerRecord[String, String](topic, "key", sentence)
 
-      if (dryRun) println(sentence.mkString(" "))
+      if (dryRun) println(sentence)
       else producer.send(record)
 
       Thread.sleep(sleep - 1)
-      sendMessages(words, producer)(n - 1, sleep, dryRun)
+      sendMessages(rest, producer)(n - 1, sleep, dryRun)
     }
   }
 
@@ -41,9 +40,17 @@ object TweetGenerator extends App {
   props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer")
 
   val producer = new KafkaProducer[String, String](props)
-  val words = Source.fromResource("words.txt").getLines().toVector
+  val sentences = Source
+    .fromResource("positive.txt")(Codec.ISO8859)
+    .getLines()
+    .map{ line =>
+      line
+        .replaceAll("""[?.!,":();]|""", "")
+        .replaceAll("""\s\s+""", " ")
+    }
+    .toList
 
-  val elapsedTime = timed(sendMessages(words, producer)(amount.toInt, sleep.toInt))
+  val elapsedTime = timed(sendMessages(sentences, producer)(amount.toInt, sleep.toInt))
 
   println(s"finished in $elapsedTime. Average time per sentence: ${elapsedTime / amount.toInt}")
 }
